@@ -25,3 +25,21 @@ export function codeInFragment(fragment: string): string | undefined {
   const text = fragment.replace(/^#/, "");
   return text.startsWith(FRAGMENT) ? text.slice(FRAGMENT.length) : undefined;
 }
+
+/** The Run code in pasted text: the one a share link carries, or else the text itself. A result
+ *  line with its link, or a link alone, both work. */
+export function codeOfText(text: string): string {
+  const linked = text.match(/#r=([A-Za-z0-9_-]+)/);
+  return linked?.[1] ?? text.trim();
+}
+
+const CODE_LIKE = /^[A-Za-z0-9_-]{16,}$/;
+
+/** The Run codes in pasted text, one per token, whether bare or in a share link; words and the
+ *  rest of a result line are left out. */
+export function codesOfText(text: string): string[] {
+  return text
+    .split(/\s+/)
+    .map(codeOfText)
+    .filter((token) => CODE_LIKE.test(token));
+}
