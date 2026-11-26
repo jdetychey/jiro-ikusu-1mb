@@ -2,6 +2,7 @@
 // that moves bytes through wasm memory. A call that returns a non-zero code throws, so a misuse
 // of the interface never goes unnoticed.
 
+import type { Engine } from "./engine-api";
 import { MAX_JOURNAL_LEN } from "./journal";
 import { EDIT_FIELDS, editedLevel, editFields, FIELD_CELLS, type Level, LEVEL_LEN, MINION_SLOTS } from "./level";
 
@@ -116,7 +117,7 @@ export class CoreError extends Error {
   }
 }
 
-export class Core {
+export class Core implements Engine {
   private constructor(private readonly wasm: Exports) {}
 
   static async load(source: BufferSource): Promise<Core> {
