@@ -390,3 +390,6 @@ body.playing canvas { touch-action: none; }
   .stick, .pad { pointer-events: auto; opacity: 0.8; }
   .side { display: none; }
 }
+
+.title { background: rgb(11 13 18 / 0.72); }
+.controls label { display: block; }

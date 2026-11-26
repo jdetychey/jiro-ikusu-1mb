@@ -5,7 +5,9 @@
 import { bootEngine, type EngineName } from "./boot";
 import { createPausableClock, type PausableClock } from "./clock";
 import type { EndReason, Snapshot } from "./core";
+import { DEMO_LEVEL_INDEX, DEMO_NONCE, demoSource } from "./demo";
 import { Effects } from "./effects";
+import type { Engine } from "./engine-api";
 import { curatedLevels } from "./engine";
 import { generateLevel, knobsAt } from "./generator";
 import { hintFor, NO_PROGRESS, type Progress, progressAt } from "./hints";
@@ -24,6 +26,9 @@ import { browserStorage, load, save } from "./storage";
 import { loadTouchSetting, mountTouchControls, saveTouchSetting, showTouchSetting, TOUCH_SETTINGS } from "./touch";
 
 const MUTE_KEY = "jiro-1mb.muted";
+const MUSIC_KEY = "jiro-1mb.music";
+const GHOST_KEY = "jiro-1mb.ghost";
+const BEST_CODE_KEY = "jiro-1mb.best-code";
 const TUTORIAL_KEY = "jiro-1mb.tutorial-done";
 const INTRO_MS = 1200;
 const BLINK_MS = 120;
@@ -36,11 +41,21 @@ type Mode = "menu" | "intro" | "playing" | "replaying" | "paused" | "ended";
 
 const isBoolean = (value: unknown): value is boolean => typeof value === "boolean";
 
+interface BestCode {
+  seed: string;
+  score: number;
+  code: string;
+}
+
+const isBestCode = (value: unknown): value is BestCode =>
+  typeof value === "object" && value !== null && typeof (value as BestCode).seed === "string" && Number.isInteger((value as BestCode).score) && typeof (value as BestCode).code === "string";
+
 async function main(): Promise<void> {
   const canvas = element<HTMLCanvasElement>("field");
   const storage = browserStorage();
   if (storage === undefined) element("storage-note").hidden = false;
-  const { core, name: engineName } = await bootEngine(location.search);
+  const { core, name: engineName, spawn } = await bootEngine(location.search);
+  const ghostCore: Engine = await spawn();
   element("engine").textContent = engineName satisfies EngineName;
   const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const renderer = new Renderer(canvas);
@@ -65,6 +80,7 @@ async function main(): Promise<void> {
   let lastFrame = 0;
   let stats = loadStats(storage);
   let lastCode = "";
+  let ghost: { replay: ReturnType<typeof startReplay>; ticks: number; over: boolean } | undefined;
 
   const announce = (text: string) => void (element("announce").textContent = text);
   const show = (id: string, visible: boolean) => void (element(id).hidden = !visible);
@@ -83,6 +99,8 @@ async function main(): Promise<void> {
     clearTimeout(introTimer);
     clearTimeout(replayTimer);
     loop = undefined;
+    ghost = undefined;
+    sound.music(false);
   }
 
   function setMode(next: Mode): void {
@@ -108,6 +126,24 @@ async function main(): Promise<void> {
     setMode("menu");
     for (const id of ["card", "pause", "end", "hint"]) show(id, false);
     showStats();
+    startDemo();
+  }
+
+  /** The first level plays itself behind the title. */
+  function startDemo(): void {
+    stopEverything();
+    const level = levels[DEMO_LEVEL_INDEX]?.[1];
+    if (level === undefined || mode !== "menu") return;
+    clock = createPausableClock(() => performance.now());
+    loop = startSession(core, level, DEMO_NONCE, demoSource(), clock.now);
+    onEnd = () => {
+      loop = undefined;
+      replayTimer = setTimeout(startDemo, 2000);
+    };
+    previous = undefined;
+    renderer.redraw(core.grid());
+    lastFrame = performance.now();
+    schedule();
   }
 
   function begin(next: Play): void {
@@ -136,6 +172,7 @@ async function main(): Promise<void> {
       clock = createPausableClock(() => performance.now());
       loop = startSession(core, level, nonce, controls, clock.now);
       onEnd = finish;
+      ghost = next.kind === "run" ? startGhost(next, nonce) : undefined;
       beginPlayback("playing", next.kind === "run" ? `Level ${next.depth + 1}` : next.name);
       teaching = next.kind === "training" && next.index === 0 && !load(storage, TUTORIAL_KEY, isBoolean, () => false);
       show("hint", teaching);
@@ -145,7 +182,18 @@ async function main(): Promise<void> {
     }
   }
 
+  /** The best Run of today as a ghost on this level, if there is one and the player wants it. */
+  function startGhost(run: Extract<Play, { kind: "run" }>, nonce: Uint8Array): typeof ghost {
+    if (!load(storage, GHOST_KEY, isBoolean, () => true)) return undefined;
+    const best = load(storage, BEST_CODE_KEY, isBestCode, () => ({ seed: "", score: 0, code: "" }));
+    if (best.seed !== run.seed) return undefined;
+    const journal = decodeCode(best.code).journals[run.depth];
+    if (journal === undefined) return undefined;
+    return { replay: startReplay(ghostCore, generateLevel(ghostCore, run.seed, run.depth), nonce, journal), ticks: 0, over: false };
+  }
+
   function beginPlayback(next: Mode, label: string): void {
+    sound.music(true);
     setMode(next);
     show("card", false);
     element("run-label").textContent = label;
@@ -163,15 +211,15 @@ async function main(): Promise<void> {
     try {
       effects.update(now - lastFrame);
       lastFrame = now;
-      const ended = loop !== undefined && (mode === "playing" || mode === "replaying") ? advance(now) : undefined;
+      const ended = loop !== undefined && (mode === "playing" || mode === "replaying" || mode === "menu") ? advance(now) : undefined;
       if (loop === undefined) renderer.show([]);
       const offset = effects.shakeOffset();
       canvas.style.transform = offset.x === 0 && offset.y === 0 ? "" : `translate(${offset.x}px, ${offset.y}px)`;
       if (ended !== undefined) {
-        sound.play(cueOfEnd(ended, core.snapshot().claimBp, core.snapshot().targetBp));
+        if (mode !== "menu") sound.play(cueOfEnd(ended, core.snapshot().claimBp, core.snapshot().targetBp));
         onEnd(ended);
       }
-      if ((mode === "playing" || mode === "replaying") && loop !== undefined) schedule();
+      if ((mode === "playing" || mode === "replaying" || mode === "menu") && loop !== undefined) schedule();
       else if (effects.active) schedule();
     } catch (error) {
       showError(error);
@@ -189,14 +237,27 @@ async function main(): Promise<void> {
     if (changed) renderer.drawCells(core.grid(), dirty);
     const snapshot = changed ? core.snapshot() : previous;
     if (snapshot === undefined) return end;
-    if (changed) {
+    if (changed && mode !== "menu") {
       if (previous !== undefined) react(previous, snapshot, dirty);
-      previous = snapshot;
       showHud(snapshot, play?.kind === "run" ? play.score : undefined);
       if (teaching) teach(snapshot);
     }
-    renderer.frame(snapshot, effects, Math.floor(now / BLINK_MS) % 2 === 0);
+    if (changed) {
+      previous = snapshot;
+      stepGhost(active.ticksRun);
+    }
+    renderer.frame(snapshot, effects, Math.floor(now / BLINK_MS) % 2 === 0, ghost !== undefined && !ghost.over ? ghostCore.snapshot().player : undefined);
     return end;
+  }
+
+  /** Plays the ghost up to the tick the player has reached. */
+  function stepGhost(ticks: number): void {
+    const active = ghost;
+    if (active === undefined) return;
+    while (!active.over && active.ticks < ticks) {
+      active.over = active.replay.step() !== undefined;
+      active.ticks += 1;
+    }
   }
 
   function react(before: Snapshot, after: Snapshot, dirty: Uint16Array): void {
@@ -218,6 +279,7 @@ async function main(): Promise<void> {
 
   function finish(end: EndReason): void {
     loop = undefined;
+    sound.music(false);
     setMode("ended");
     show("hint", false);
     const { claimBp, targetBp } = core.snapshot();
@@ -252,6 +314,8 @@ async function main(): Promise<void> {
     stats = withRun(stats, run.seed, { score: run.score, levelsCleared: run.depth });
     saveStats(storage, stats);
     lastCode = encodeCode(run.seed, run.journals);
+    const bestCode = load(storage, BEST_CODE_KEY, isBestCode, () => ({ seed: "", score: 0, code: "" }));
+    if (bestCode.seed !== run.seed || run.score > bestCode.score) save(storage, BEST_CODE_KEY, { seed: run.seed, score: run.score, code: lastCode });
     const code = element<HTMLTextAreaElement>("code");
     code.value = lastCode;
     for (const id of ["code", "watch-run", "copy-result", "copy-link", "copy-code"]) show(id, true);
@@ -291,6 +355,7 @@ async function main(): Promise<void> {
     keys.clear();
     controls.clear();
     setMode("paused");
+    sound.music(false);
     show("pause", true);
   }
 
@@ -299,6 +364,7 @@ async function main(): Promise<void> {
     clock.resume();
     show("pause", false);
     setMode(play === undefined ? "replaying" : "playing");
+    sound.music(true);
     lastFrame = performance.now();
     canvas.focus({ preventScroll: true });
     schedule();
@@ -344,7 +410,19 @@ async function main(): Promise<void> {
   muteBox.addEventListener("change", () => {
     sound.muted = muteBox.checked;
     save(storage, MUTE_KEY, sound.muted);
+    sound.music(!sound.muted && mode === "playing");
   });
+  const musicBox = element<HTMLInputElement>("music");
+  sound.musicOn = load(storage, MUSIC_KEY, isBoolean, () => true);
+  musicBox.checked = sound.musicOn;
+  musicBox.addEventListener("change", () => {
+    sound.musicOn = musicBox.checked;
+    save(storage, MUSIC_KEY, sound.musicOn);
+    sound.music(mode === "playing");
+  });
+  const ghostBox = element<HTMLInputElement>("ghost");
+  ghostBox.checked = load(storage, GHOST_KEY, isBoolean, () => true);
+  ghostBox.addEventListener("change", () => void save(storage, GHOST_KEY, ghostBox.checked));
 
   element("run").addEventListener("click", () => begin({ kind: "run", seed: today(), depth: 0, journals: [], score: 0 }));
   element("train").addEventListener("click", () => {
@@ -416,6 +494,7 @@ async function main(): Promise<void> {
   window.addEventListener("pagehide", pause);
   document.addEventListener("visibilitychange", () => {
     if (document.hidden) pause();
+    else if (mode === "menu") startDemo();
   });
   element("pause").addEventListener("pointerdown", resume);
   canvas.addEventListener("pointerdown", () => sound.unlock());
@@ -427,6 +506,7 @@ async function main(): Promise<void> {
   fit();
   window.addEventListener("resize", fit);
   showStats();
+  startDemo();
 
   const shared = codeInFragment(location.hash);
   if (shared !== undefined) {

@@ -51,6 +51,30 @@ describe.each(NAMES)("the game in %s", (name) => {
     expect(errors).toEqual([]);
   });
 
+  it("plays the first level by itself behind the title", async () => {
+    const { page, errors } = await open(STRICT);
+    await page.waitForFunction(() => document.getElementById("engine")!.textContent !== "–");
+    await page.waitForTimeout(300);
+    const before = await canvasHash(page);
+    await page.waitForTimeout(1_500);
+    expect(await canvasHash(page)).not.toBe(before);
+    expect(errors).toEqual([]);
+  });
+
+  it("plays a second Run with the first one as a ghost, with no errors", async () => {
+    const { page, errors } = await open(STRICT);
+    for (let run = 0; run < 2; run += 1) {
+      await page.click(run === 0 ? "#run" : "#again");
+      await page.waitForFunction(() => document.body.classList.contains("playing"));
+      await page.keyboard.down("ArrowUp");
+      await page.waitForTimeout(600);
+      await page.keyboard.up("ArrowUp");
+      await page.keyboard.press("KeyX");
+      await page.waitForSelector("#code:not([hidden])");
+    }
+    expect(errors).toEqual([]);
+  });
+
   it("plays a Run: the field changes while keys are held", async () => {
     const { page, errors } = await open(STRICT);
     await page.click("#run");
