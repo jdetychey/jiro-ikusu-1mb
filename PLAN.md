@@ -37,8 +37,10 @@ Two modes: **Training** (16 curated levels) and the **daily Run**.
    smoke test under a strict CSP.
 2. **Wasm in the host's sandbox:** upload a test page on Dec 1. If it blocks wasm
    (no `wasm-unsafe-eval`), port `core/` to TypeScript, checked against the main repo's vectors.
-3. **Balance:** the generator is unchecked by playtest bots. Port the main repo's bots to measure
-   clear rates by depth, and tune `knobsAt` to a smooth ramp.
+3. **Done, balance:** `scripts/balance.sh` runs the main repository's playtest bots (the reference
+   mix, bold and committer) on generated levels and writes `reports/balance.md`. The ramp is smooth:
+   98 % at level 1, 54 % at 17, 17 % at 33, about 8 % from 45, and it keeps rising through time,
+   walls and target. Bots are weaker than people, so this is a floor on what humans clear.
 4. **Product:** title screen, visual replay of a Run code, sound (synthesized WebAudio),
    phone layout check, brand assets.
 5. **QA and submit:** Playwright on Chromium and WebKit, parity vectors, then submit with this
