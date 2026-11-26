@@ -4,14 +4,27 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Jiro-ikusu</title>
+    <link rel="icon" href="/favicon.ico" sizes="48x48" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <meta name="theme-color" content="#000000" />
     <meta name="description" content="Draw the line. Claim the field. A territory-capture arcade game in under 1 MB." />
     <link rel="stylesheet" href="/src/style.css" />
   </head>
   <body>
     <header class="bar">
-      <h1 class="title">Jiro-ikusu <span lang="ja">ジロイクス</span></h1>
+      <img src="/brand/wordmark.svg" width="368" height="44" alt="Jiro-ikusu" />
     </header>
+    <section class="intro" aria-labelledby="page-title">
+      <h1 id="page-title" class="banner">
+        <picture>
+          <source media="(min-width: 512px)" srcset="/brand/banner.svg" />
+          <img src="/brand/lockup-stacked.svg" width="196" height="220" alt="" />
+        </picture>
+        <span class="visually-hidden">Jiro-ikusu <span lang="ja">ジロイクス</span> <span lang="zh-Hans">极络益克司</span></span>
+      </h1>
+      <p>Cut the field away from the boss, and claim the level's target. Under 1 MB, fully offline.</p>
+    </section>
     <main>
       <section class="field">
         <canvas id="field" tabindex="0" aria-label="Playing field"></canvas>
@@ -21,6 +34,7 @@
           <textarea id="code" readonly rows="3" hidden aria-label="Run code"></textarea>
           <div class="actions">
             <button id="next" type="button" hidden>Next level</button>
+            <button id="watch-run" type="button" hidden>Watch this Run</button>
             <button id="again" type="button">Play again</button>
           </div>
         </div>
@@ -53,11 +67,14 @@
           <summary>Verify a Run code</summary>
           <textarea id="verify-code" rows="3" aria-label="Run code to verify"></textarea>
           <button id="verify" type="button">Verify</button>
+          <button id="watch" type="button" hidden>Watch</button>
+          <label>Speed <select id="speed"><option value="1">1×</option><option value="2">2×</option><option value="4">4×</option></select></label>
           <p id="verify-result" role="status"></p>
         </details>
         <details class="controls">
           <summary>Controls</summary>
           <p class="keys-help">Move with the arrow keys. Hold A to cut fast, B to slow down behind the shield, X to bank the level.</p>
+          <label><input id="mute" type="checkbox" /> Mute sound</label>
           <div class="touch-help">
             <fieldset>
               <legend>Touch controls</legend>

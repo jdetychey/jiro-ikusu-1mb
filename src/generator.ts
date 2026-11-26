@@ -16,23 +16,26 @@ export interface Knobs {
   minionCount: number;
   minionPeriod: number;
   respawnDelay: number;
+  timeLimit: number;
   lives: number;
   targetBp: number;
   walls: number;
 }
 
-/** The knobs of level `depth` (0 is the first): the curated levels' ramp, stretched out. */
+/** The knobs of level `depth` (0 is the first), each stepping on its own schedule so that the
+ *  difficulty rises smoothly and never stops rising (measured by `npm run balance`, PLAN.md). */
 export function knobsAt(depth: number): Knobs {
-  const minionCount = Math.min(3, Math.floor(depth / 3));
+  const minionCount = depth < 3 ? 0 : depth < 7 ? 1 : depth < 15 ? 2 : 3;
   return {
-    bossSize: [Math.min(8, 3 + Math.floor(depth / 6)), Math.min(8, 4 + Math.floor(depth / 4))],
-    bossPeriod: depth < 4 ? 3 : depth < 8 ? 2 : 1,
+    bossSize: [Math.min(6, 3 + Math.floor(depth / 8)), Math.min(8, 4 + Math.floor(depth / 5))],
+    bossPeriod: depth < 5 ? 3 : depth < 12 ? 2 : 1,
     minionCount,
-    minionPeriod: minionCount === 0 ? 0 : Math.max(1, 3 - Math.floor(depth / 6)),
-    respawnDelay: minionCount === 0 ? 0 : Math.max(45, 90 - 5 * depth),
-    lives: Math.max(2, 5 - Math.floor(depth / 6)),
-    targetBp: Math.min(8500, 7000 + 100 * depth),
-    walls: Math.min(10, Math.floor(depth / 2)),
+    minionPeriod: minionCount === 0 ? 0 : depth < 9 ? 3 : depth < 18 ? 2 : 1,
+    respawnDelay: minionCount === 0 ? 0 : Math.max(30, 90 - 3 * depth),
+    timeLimit: Math.max(1200, 2700 - 15 * depth),
+    lives: depth < 10 ? 5 : depth < 22 ? 4 : 3,
+    targetBp: Math.min(9000, 7000 + 50 * depth),
+    walls: Math.min(12, Math.floor(depth / 2)),
   };
 }
 
@@ -70,7 +73,7 @@ export function drawLevel(depth: number, random: Random): Level {
     minionSpawns: [],
     minionPeriod: knobs.minionPeriod,
     respawnDelay: knobs.respawnDelay,
-    timeLimit: 2700,
+    timeLimit: knobs.timeLimit,
     lives: knobs.lives,
     targetBp: knobs.targetBp,
   };

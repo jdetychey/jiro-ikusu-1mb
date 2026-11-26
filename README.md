@@ -8,7 +8,8 @@ network calls, no chain.
 - **Daily Run:** endless generated levels, the same for everyone on a UTC day, harder with each
   level, until a level is not cleared. A Run ends with a code that anyone can verify offline.
 
-The game rules are the deterministic Rust core of the main repository, compiled to a 26 KB wasm
+Balance is measured with the main repository's playtest bots (`scripts/balance.sh`,
+[`reports/balance.md`](reports/balance.md)). The game rules are the deterministic Rust core of the main repository, compiled to a 26 KB wasm
 module embedded in the page ([`CORE_SOURCE.md`](CORE_SOURCE.md)). [`PLAN.md`](PLAN.md) has the plan.
 
 ```bash
