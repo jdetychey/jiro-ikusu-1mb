@@ -9,11 +9,6 @@ export type Entry =
   | { valid: true; seed: string; levelsCleared: number; score: number }
   | { valid: false; code: string; error: string };
 
-/** The codes of `text`, one per line, blank lines left out. */
-export function codesOf(text: string): string[] {
-  return text.split(/\s+/).filter((line) => line !== "");
-}
-
 /** Replays every code. Valid entries come first, best score first, and ties go to the deeper Run. */
 export function rank(core: Engine, codes: readonly string[], today: string): Entry[] {
   const entries = codes.map((code): Entry => {

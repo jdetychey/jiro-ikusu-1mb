@@ -12,13 +12,13 @@ import { curatedLevels } from "./engine";
 import { generateLevel, knobsAt } from "./generator";
 import { hintFor, NO_PROGRESS, type Progress, progressAt } from "./hints";
 import { combined, CONTROLS, defaultBindings, HeldKeys, keyboardLayout, loadBindings } from "./input";
-import { codesOf, rank } from "./leaderboard";
+import { rank } from "./leaderboard";
 import { createLoop, type Loop } from "./loop";
 import { element, fitField, messageOf, percent, showHud } from "./page";
 import { Renderer } from "./render";
 import { startReplay } from "./replay";
 import { dailySeed, decodeCode, encodeCode, isCleared, nonceFor, verifyCode, weightBp } from "./run";
-import { codeInFragment, shareLink, shareText } from "./share";
+import { codeInFragment, codeOfText, codesOfText, shareLink, shareText } from "./share";
 import { cueOfEnd, cuesBetween, Sound } from "./sound";
 import { startSession } from "./session";
 import { bestDepth, loadStats, saveStats, streak, withRun } from "./stats";
@@ -80,8 +80,11 @@ async function main(): Promise<void> {
   let lastFrame = 0;
   let stats = loadStats(storage);
   let lastCode = "";
+  /** What a pause interrupted before a level began: the intro card, or the gap between replayed levels. */
+  let interrupted: (() => void) | undefined;
   let ghost: { replay: ReturnType<typeof startReplay>; ticks: number; over: boolean } | undefined;
 
+  const isPlaying = () => mode === "playing" || mode === "replaying";
   const announce = (text: string) => void (element("announce").textContent = text);
   const show = (id: string, visible: boolean) => void (element(id).hidden = !visible);
   const today = () => dailySeed(new Date());
@@ -100,6 +103,7 @@ async function main(): Promise<void> {
     clearTimeout(replayTimer);
     loop = undefined;
     ghost = undefined;
+    interrupted = undefined;
     sound.music(false);
   }
 
@@ -158,7 +162,11 @@ async function main(): Promise<void> {
       knobs === undefined ? "Claim the target, then bank it." : `Claim ${knobs.targetBp / 100} % · ${knobs.lives} lives${knobs.minionCount > 0 ? ` · ${knobs.minionCount} minions` : ""}`;
     show("card", true);
     renderer.show([]);
-    introTimer = setTimeout(startLevel, INTRO_MS);
+    interrupted = () => begin(next);
+    introTimer = setTimeout(() => {
+      interrupted = undefined;
+      startLevel();
+    }, INTRO_MS);
   }
 
   function startLevel(): void {
@@ -173,10 +181,11 @@ async function main(): Promise<void> {
       loop = startSession(core, level, nonce, controls, clock.now);
       onEnd = finish;
       ghost = next.kind === "run" ? startGhost(next, nonce) : undefined;
-      beginPlayback("playing", next.kind === "run" ? `Level ${next.depth + 1}` : next.name);
       teaching = next.kind === "training" && next.index === 0 && !load(storage, TUTORIAL_KEY, isBoolean, () => false);
       show("hint", teaching);
       progress = NO_PROGRESS;
+      beginPlayback("playing", next.kind === "run" ? `Level ${next.depth + 1}` : next.name);
+      if (document.hidden) pause();
     } catch (error) {
       showError(error);
     }
@@ -187,9 +196,15 @@ async function main(): Promise<void> {
     if (!load(storage, GHOST_KEY, isBoolean, () => true)) return undefined;
     const best = load(storage, BEST_CODE_KEY, isBestCode, () => ({ seed: "", score: 0, code: "" }));
     if (best.seed !== run.seed) return undefined;
-    const journal = decodeCode(best.code).journals[run.depth];
-    if (journal === undefined) return undefined;
-    return { replay: startReplay(ghostCore, generateLevel(ghostCore, run.seed, run.depth), nonce, journal), ticks: 0, over: false };
+    try {
+      const journal = decodeCode(best.code).journals[run.depth];
+      if (journal === undefined) return undefined;
+      return { replay: startReplay(ghostCore, generateLevel(ghostCore, run.seed, run.depth), nonce, journal), ticks: 0, over: false };
+    } catch (error) {
+      console.warn("the stored best Run could not be used as a ghost", error);
+      save(storage, BEST_CODE_KEY, { seed: "", score: 0, code: "" });
+      return undefined;
+    }
   }
 
   function beginPlayback(next: Mode, label: string): void {
@@ -331,9 +346,8 @@ async function main(): Promise<void> {
     const playLevel = (depth: number): void => {
       const journal = journals[depth];
       if (journal === undefined) {
-        element("run-label").textContent = `Replay done: ${journals.length} levels`;
-        setMode("menu");
-        showStats();
+        showMenu();
+        element("run-label").textContent = `Replay done: ${journals.length} ${journals.length === 1 ? "level" : "levels"}`;
         return;
       }
       const replay = startReplay(core, generateLevel(core, codeSeed, depth), nonceFor(core, codeSeed, depth), journal);
@@ -341,7 +355,11 @@ async function main(): Promise<void> {
       loop = createLoop({ now: clock.now, sample: () => 0, tick: () => replay.step() });
       onEnd = () => {
         loop = undefined;
-        replayTimer = setTimeout(() => playLevel(depth + 1), 1000);
+        interrupted = () => playLevel(depth + 1);
+        replayTimer = setTimeout(() => {
+          interrupted = undefined;
+          playLevel(depth + 1);
+        }, 1000);
       };
       beginPlayback("replaying", `Replay: level ${depth + 1} of ${journals.length}`);
     };
@@ -350,8 +368,14 @@ async function main(): Promise<void> {
   }
 
   function pause(): void {
-    if (mode !== "playing" && mode !== "replaying") return;
-    clock.pause();
+    const waiting = interrupted !== undefined && (mode === "intro" || mode === "replaying");
+    if (!isPlaying() && !waiting) return;
+    if (waiting) {
+      clearTimeout(introTimer);
+      clearTimeout(replayTimer);
+    } else {
+      clock.pause();
+    }
     keys.clear();
     controls.clear();
     setMode("paused");
@@ -361,8 +385,14 @@ async function main(): Promise<void> {
 
   function resume(): void {
     if (mode !== "paused") return;
-    clock.resume();
     show("pause", false);
+    if (interrupted !== undefined) {
+      const again = interrupted;
+      interrupted = undefined;
+      again();
+      return;
+    }
+    clock.resume();
     setMode(play === undefined ? "replaying" : "playing");
     sound.music(true);
     lastFrame = performance.now();
@@ -370,10 +400,10 @@ async function main(): Promise<void> {
     schedule();
   }
 
-  function verifyAndShow(code: string): void {
+  function verifyAndShow(text: string): void {
     const result = element("verify-result");
     try {
-      const { seed, levelsCleared, score } = verifyCode(core, code, today());
+      const { seed, levelsCleared, score } = verifyCode(core, codeOfText(text), today());
       result.textContent = `Valid: ${seed}, ${levelsCleared} levels cleared, ${score.toLocaleString("en-US")} points.`;
       show("watch", true);
     } catch (error) {
@@ -410,7 +440,7 @@ async function main(): Promise<void> {
   muteBox.addEventListener("change", () => {
     sound.muted = muteBox.checked;
     save(storage, MUTE_KEY, sound.muted);
-    sound.music(!sound.muted && mode === "playing");
+    sound.music(!sound.muted && isPlaying());
   });
   const musicBox = element<HTMLInputElement>("music");
   sound.musicOn = load(storage, MUSIC_KEY, isBoolean, () => true);
@@ -418,7 +448,7 @@ async function main(): Promise<void> {
   musicBox.addEventListener("change", () => {
     sound.musicOn = musicBox.checked;
     save(storage, MUSIC_KEY, sound.musicOn);
-    sound.music(mode === "playing");
+    sound.music(isPlaying());
   });
   const ghostBox = element<HTMLInputElement>("ghost");
   ghostBox.checked = load(storage, GHOST_KEY, isBoolean, () => true);
@@ -447,7 +477,7 @@ async function main(): Promise<void> {
   element("verify").addEventListener("click", () => verifyAndShow(verifyBox().value));
   element("watch").addEventListener("click", () => {
     try {
-      watch(verifyBox().value, speed());
+      watch(codeOfText(verifyBox().value), speed());
     } catch (error) {
       element("verify-result").textContent = messageOf(error);
     }
@@ -459,7 +489,7 @@ async function main(): Promise<void> {
   element("rank").addEventListener("click", () => {
     const board = element("board");
     board.replaceChildren(
-      ...rank(core, codesOf(element<HTMLTextAreaElement>("board-codes").value), today()).map((entry) => {
+      ...rank(core, codesOfText(element<HTMLTextAreaElement>("board-codes").value), today()).map((entry) => {
         const item = document.createElement("li");
         item.textContent = entry.valid ? `${entry.score.toLocaleString("en-US")} points, ${entry.levelsCleared} levels (${entry.seed})` : `${entry.code}: ${entry.error}`;
         item.classList.toggle("bad", !entry.valid);
@@ -501,19 +531,23 @@ async function main(): Promise<void> {
 
   const fit = () => {
     if (fitField(renderer)) renderer.redraw(core.grid());
-    if (loop === undefined) renderer.show([]);
+    if (mode === "paused" && previous !== undefined) renderer.frame(previous);
+    else if (loop === undefined) renderer.show([]);
   };
   fit();
   window.addEventListener("resize", fit);
   showStats();
   startDemo();
 
-  const shared = codeInFragment(location.hash);
-  if (shared !== undefined) {
+  const openSharedLink = () => {
+    const shared = codeInFragment(location.hash);
+    if (shared === undefined) return;
     verifyBox().value = shared;
-    element<HTMLDetailsElement>("verify-code").closest("details")?.setAttribute("open", "");
+    verifyBox().closest("details")?.setAttribute("open", "");
     verifyAndShow(shared);
-  }
+  };
+  openSharedLink();
+  window.addEventListener("hashchange", openSharedLink);
 }
 
 main().catch((error: unknown) => {

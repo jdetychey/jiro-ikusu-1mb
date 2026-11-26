@@ -1,7 +1,7 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import type { Core } from "../src/core";
 import { generateLevel } from "../src/generator";
-import { codesOf, rank } from "../src/leaderboard";
+import { rank } from "../src/leaderboard";
 import { encodeCode, nonceFor } from "../src/run";
 import { loadCoreFromTarget } from "./engine";
 
@@ -18,12 +18,6 @@ function playedJournal(seed: string, ticks: number, mask: number): Uint8Array {
   core.tick(0b1000000);
   return core.journal();
 }
-
-describe("codesOf", () => {
-  it("splits on any whitespace and drops blanks", () => {
-    expect(codesOf(" a\nb  \n\n c\t")).toEqual(["a", "b", "c"]);
-  });
-});
 
 describe("rank", () => {
   it("lists valid codes first and explains the rest", () => {

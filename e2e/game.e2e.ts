@@ -75,6 +75,40 @@ describe.each(NAMES)("the game in %s", (name) => {
     expect(errors).toEqual([]);
   });
 
+  it("pauses a level that was still in its intro when the page lost focus", async () => {
+    const { page } = await open(STRICT);
+    await page.click("#run");
+    await page.evaluate(() => window.dispatchEvent(new Event("blur")));
+    await page.waitForSelector("#pause:not([hidden])");
+    await page.waitForTimeout(1_500);
+    expect(await page.evaluate(() => document.body.classList.contains("playing"))).toBe(true);
+    await page.keyboard.press("Space");
+    await page.waitForFunction(() => document.body.classList.contains("playing") && document.getElementById("pause")!.hidden);
+  });
+
+  it("starts a Run even when the stored best Run is corrupt", async () => {
+    const { page, errors } = await open(STRICT);
+    await page.evaluate(() => localStorage.setItem("jiro-1mb.best-code", JSON.stringify({ seed: new Date().toISOString().slice(0, 10), score: 5, code: "garbage" })));
+    await page.click("#run");
+    await page.waitForFunction(() => document.body.classList.contains("playing"));
+    expect(await page.isVisible("#error")).toBe(false);
+    expect(errors.filter((error) => !/garbage|best Run/i.test(error))).toEqual([]);
+  });
+
+  it("verifies a share link pasted into the verify box", async () => {
+    const first = await open(STRICT);
+    await first.page.click("#run");
+    await first.page.waitForFunction(() => document.body.classList.contains("playing"));
+    await first.page.keyboard.press("KeyX");
+    await first.page.waitForSelector("#code:not([hidden])");
+    const code = await first.page.inputValue("#code");
+    const second = await open(STRICT);
+    await second.page.locator("summary", { hasText: "Verify" }).click();
+    await second.page.fill("#verify-code", `Jiro-ikusu 2026-12-03 | depth 0 | 0\nhttp://127.0.0.1/index.html#r=${code}`);
+    await second.page.click("#verify");
+    expect(await second.page.textContent("#verify-result")).toMatch(/^Valid: /);
+  });
+
   it("plays a Run: the field changes while keys are held", async () => {
     const { page, errors } = await open(STRICT);
     await page.click("#run");

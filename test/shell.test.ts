@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { Snapshot } from "../src/core";
 import { hintFor, NO_PROGRESS, progressAt } from "../src/hints";
-import { codeInFragment, shareLink, shareText } from "../src/share";
+import { codeInFragment, codeOfText, codesOfText, shareLink, shareText } from "../src/share";
 import { bestDepth, streak, withRun } from "../src/stats";
 
 const snapshot = (over: Partial<Snapshot> & { x?: number; y?: number; cutting?: boolean }): Snapshot => ({
@@ -81,5 +81,29 @@ describe("hints", () => {
   it("never forgets what was done", () => {
     const done = progressAt(NO_PROGRESS, snapshot({ x: 31, cutting: true }));
     expect(progressAt(done, snapshot({})).cut).toBe(true);
+  });
+});
+
+describe("codeOfText", () => {
+  const code = "AzIwMjYtMTItMDEBAAAA-_x1";
+
+  it.each([
+    ["a bare code", ` ${code}\n`],
+    ["a share link", `https://x.test/play/#r=${code}`],
+    ["a result line with its link", `Jiro-ikusu 2026-12-03 | depth 3 | 38,420\n🟦🟦🟦🟥\nhttps://x.test/#r=${code}`],
+  ])("finds the code in %s", (_, text) => {
+    expect(codeOfText(text)).toBe(code);
+  });
+});
+
+describe("codesOfText", () => {
+  const [one, two] = ["AzIwMjYtMTItMDEBAAAA-_x1", "AzIwMjYtMTItMDIBBBBB-_y2"];
+
+  it("takes bare codes and links, one per token, and drops words", () => {
+    expect(codesOfText(`Jiro-ikusu 2026-12-03 | depth 3 | 38,420\n${one}\nhttps://x.test/#r=${two}`)).toEqual([one, two]);
+  });
+
+  it("finds nothing in plain words", () => {
+    expect(codesOfText("not a code at all")).toEqual([]);
   });
 });
