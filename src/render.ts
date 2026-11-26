@@ -21,6 +21,9 @@ export const ENTITY_COLORS = {
   minionCore: "#0b3d1d",
 } as const;
 
+/** The ghost of a past run: the player's white, half see-through. */
+export const GHOST_COLOR = "rgba(255, 255, 255, 0.4)";
+
 /** A rectangle to draw over the grid, in pixels. */
 export interface Rect {
   color: string;
@@ -38,7 +41,7 @@ export function cellRect(cellPx: number, x: number, y: number, width: number, he
 /** The entities to draw over the grid, back to front: boss, minions, player. The boss has a dark
  *  core and each minion a dark center, so that they differ from the player by shape, not by color
  *  alone. A player that cannot be hurt blinks. */
-export function entityRects(snapshot: Snapshot, cellPx: number, blinkOn = true): Rect[] {
+export function entityRects(snapshot: Snapshot, cellPx: number, blinkOn = true, ghost?: { x: number; y: number }): Rect[] {
   const { boss, player } = snapshot;
   const rects = [cellRect(cellPx, boss.x, boss.y, boss.size, boss.size, ENTITY_COLORS.boss)];
   if (boss.size >= 3) rects.push(cellRect(cellPx, boss.x + 1, boss.y + 1, boss.size - 2, boss.size - 2, ENTITY_COLORS.bossCore));
@@ -47,6 +50,7 @@ export function entityRects(snapshot: Snapshot, cellPx: number, blinkOn = true):
     const inset = Math.max(1, Math.floor(cellPx / 3));
     rects.push({ color: ENTITY_COLORS.minionCore, x: minion.x * cellPx + inset, y: minion.y * cellPx + inset, width: cellPx - 2 * inset, height: cellPx - 2 * inset });
   }
+  if (ghost !== undefined) rects.push(cellRect(cellPx, ghost.x, ghost.y, 1, 1, GHOST_COLOR));
   if (snapshot.invulnerable === 0 || blinkOn) {
     const color = snapshot.invulnerable > 0 ? ENTITY_COLORS.invulnerablePlayer : ENTITY_COLORS.player;
     rects.push(cellRect(cellPx, player.x, player.y, 1, 1, color));
@@ -118,8 +122,8 @@ export class Renderer {
   }
 
   /** Shows the grid layer with the entities of `snapshot` on top, then the effects. */
-  frame(snapshot: Snapshot, effects?: Effects, blinkOn = true): void {
-    this.show(entityRects(snapshot, this.cellPx, blinkOn));
+  frame(snapshot: Snapshot, effects?: Effects, blinkOn = true, ghost?: { x: number; y: number }): void {
+    this.show(entityRects(snapshot, this.cellPx, blinkOn, ghost));
     effects?.draw(this.context, this.cellPx);
   }
 

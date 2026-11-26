@@ -10,16 +10,18 @@ export type EngineName = "wasm" | "ts";
 export interface Booted {
   core: Engine;
   name: EngineName;
+  /** Another engine of the same kind, for a second game at once (the ghost). */
+  spawn: () => Promise<Engine>;
 }
 
 export async function bootEngine(search: string): Promise<Booted> {
   const wantsPort = new URLSearchParams(search).get("engine") === "ts";
   if (!wantsPort && typeof WebAssembly === "object") {
     try {
-      return { core: await loadEngine(), name: "wasm" };
+      return { core: await loadEngine(), name: "wasm", spawn: loadEngine };
     } catch (error) {
       console.warn("WebAssembly could not start, so the game runs on its TypeScript engine", error);
     }
   }
-  return { core: await TsCore.load(), name: "ts" };
+  return { core: await TsCore.load(), name: "ts", spawn: () => TsCore.load() };
 }

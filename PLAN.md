@@ -63,8 +63,14 @@ Two modes: **Training** (16 curated levels) and the **daily Run**.
    missing or refused, and `?engine=ts` forces it. `test/parity.test.ts` holds it to the wasm build
    tick by tick (state hash, snapshot, grid, journal, replay traces, and the error codes of 1,500
    mutated levels and 150 mutated journals), and the e2e tests verify a wasm Run code on the port.
-9. **Open:** a Dec 1 test upload to learn the host's real policy (try `pack/index.html`, then
-   `jiro-ikusu-1mb.zip`, then `jiro-ikusu-1mb-files.zip`), ghost replays, music, an attract mode.
+9. **Done, polish:** an attract mode (the first level plays itself from a short input script behind
+   the title; a test holds the script to a good capture on both engines), a ghost of today's best
+   Run on each level (a second engine replays its journal in step), and a looping synth music
+   (bass and arpeggio, with its own switch). WebKit is verified: the e2e tests pass there too.
+10. **Open:** a Dec 1 test upload to learn the host's real policy (try `pack/index.html`, then
+   `jiro-ikusu-1mb.zip`, then `jiro-ikusu-1mb-files.zip`); smooth interpolation of entity movement
+   (render only); a bigger curated campaign; the organisers' answers on judging, licence and AI
+   assets.
 
 ## Risks
 
