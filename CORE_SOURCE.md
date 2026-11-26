@@ -6,3 +6,6 @@
 Only the `Cargo.toml` files differ: `core/` drops its dev-dependencies, because its tests and the
 test vectors live in the main repository and run there. A rules change is made there first, then
 copied here with the same bytes, so a journal verifies identically in both.
+
+`src/tscore/` is a TypeScript port of `core/`, kept bit-exact by `test/parity.test.ts`; a change to
+`core/` is copied there too, and the parity test fails until it matches.

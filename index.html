@@ -2,13 +2,13 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <title>Jiro-ikusu</title>
     <link rel="icon" href="/favicon.ico" sizes="48x48" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <meta name="theme-color" content="#000000" />
-    <meta name="description" content="Draw the line. Claim the field. A territory-capture arcade game in under 1 MB." />
+    <meta name="description" content="Cut the field away from the boss. A Qix-style arcade game with a daily seeded run, in under 1 MB." />
     <link rel="stylesheet" href="/src/style.css" />
   </head>
   <body>
@@ -23,19 +23,45 @@
         </picture>
         <span class="visually-hidden">Jiro-ikusu <span lang="ja">ジロイクス</span> <span lang="zh-Hans">极络益克司</span></span>
       </h1>
-      <p>Cut the field away from the boss, and claim the level's target. Under 1 MB, fully offline.</p>
     </section>
+    <p id="error" class="error" role="alert" hidden></p>
     <main>
       <section class="field">
-        <canvas id="field" tabindex="0" aria-label="Playing field"></canvas>
+        <p id="hint" class="hint" hidden></p>
+        <canvas id="field" tabindex="0" aria-label="Playing field. You are the white square. The magenta block with a dark core is the boss, the green squares are minions."></canvas>
+
+        <div id="title" class="overlay title">
+          <p class="pitch">Cut the field away from the boss.<br />Claim the target to clear the level.</p>
+          <button id="run" type="button" class="primary">Play today's Run</button>
+          <p id="today" class="muted"></p>
+          <div class="actions">
+            <label>Training <select id="level"></select></label>
+            <button id="train" type="button">Play</button>
+          </div>
+        </div>
+
+        <div id="card" class="overlay card" hidden>
+          <h2 id="card-title"></h2>
+          <p id="card-detail"></p>
+        </div>
+
+        <div id="pause" class="overlay" hidden>
+          <h2>Paused</h2>
+          <p>Press any key or tap to go on.</p>
+        </div>
+
         <div id="end" class="end" hidden>
           <h2 id="end-title"></h2>
           <p id="end-detail"></p>
           <textarea id="code" readonly rows="3" hidden aria-label="Run code"></textarea>
           <div class="actions">
-            <button id="next" type="button" hidden>Next level</button>
+            <button id="next" type="button" hidden class="primary">Next level</button>
             <button id="watch-run" type="button" hidden>Watch this Run</button>
+            <button id="copy-result" type="button" hidden>Copy result</button>
+            <button id="copy-link" type="button" hidden>Copy link</button>
+            <button id="copy-code" type="button" hidden>Copy code</button>
             <button id="again" type="button">Play again</button>
+            <button id="menu" type="button">Menu</button>
           </div>
         </div>
       </section>
@@ -50,30 +76,30 @@
       <aside class="side">
         <dl id="hud" class="hud">
           <dt>Level</dt><dd id="run-label">–</dd>
+          <dt>Score</dt><dd id="hud-score">–</dd>
           <dt>Claim</dt><dd id="hud-claim">–</dd>
           <dt>Lives</dt><dd id="hud-lives">–</dd>
           <dt>Shield</dt><dd id="hud-shield">–</dd>
           <dt>Time</dt><dd id="hud-time">–</dd>
         </dl>
-        <div class="setup">
-          <p>Daily Run <strong id="seed"></strong>: endless levels, the same for everyone today.</p>
-          <p id="best"></p>
-          <button id="run" type="button">Start the Run</button>
-          <label>Training <select id="level"></select></label>
-          <button id="train" type="button">Play the level</button>
-          <p id="setup-error" class="error" role="alert"></p>
-        </div>
+        <p id="stats" class="muted"></p>
         <details class="controls">
-          <summary>Verify a Run code</summary>
+          <summary>Verify, watch and rank Run codes</summary>
           <textarea id="verify-code" rows="3" aria-label="Run code to verify"></textarea>
-          <button id="verify" type="button">Verify</button>
-          <button id="watch" type="button" hidden>Watch</button>
-          <label>Speed <select id="speed"><option value="1">1×</option><option value="2">2×</option><option value="4">4×</option></select></label>
+          <div class="actions">
+            <button id="verify" type="button">Verify</button>
+            <button id="watch" type="button" hidden>Watch</button>
+            <label>Speed <select id="speed"><option value="1">1×</option><option value="2">2×</option><option value="4">4×</option></select></label>
+          </div>
           <p id="verify-result" role="status"></p>
+          <label for="board-codes">Leaderboard: paste Run codes, one per line</label>
+          <textarea id="board-codes" rows="4"></textarea>
+          <button id="rank" type="button">Rank</button>
+          <ol id="board"></ol>
         </details>
         <details class="controls">
           <summary>Controls</summary>
-          <p class="keys-help">Move with the arrow keys. Hold A to cut fast, B to slow down behind the shield, X to bank the level.</p>
+          <p class="keys-help">Move with the arrow keys. Hold A to cut fast, B to slow down behind the shield, X to bank the level. P or Escape pauses.</p>
           <label><input id="mute" type="checkbox" /> Mute sound</label>
           <div class="touch-help">
             <fieldset>
@@ -84,8 +110,11 @@
             </fieldset>
           </div>
         </details>
+        <p id="storage-note" class="muted" hidden>Your browser does not keep data for this page, so scores and settings last until you close it.</p>
+        <p class="muted">Engine: <span id="engine">–</span></p>
       </aside>
     </main>
+    <p id="announce" class="visually-hidden" role="status" aria-live="polite"></p>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

@@ -1,7 +1,8 @@
 // Watching a recorded level: the journal's events are the controls held from their tick on
 // (README §6.2), fed to the core tick by tick, so the replay is the game that was played.
 
-import { type Core, CoreError, type EndReason } from "./core";
+import { CoreError, type EndReason } from "./core";
+import type { Engine } from "./engine-api";
 import { journalEvents } from "./journal";
 import { TRAINING } from "./session";
 
@@ -25,7 +26,7 @@ export interface LevelReplay {
 }
 
 /** Starts `level` on `nonce` in the core and plays `journal` on it. */
-export function startReplay(core: Core, level: Uint8Array, nonce: Uint8Array, journal: Uint8Array): LevelReplay {
+export function startReplay(core: Engine, level: Uint8Array, nonce: Uint8Array, journal: Uint8Array): LevelReplay {
   const maskAt = maskTimeline(journal);
   let tick = 0;
   const code = core.loadLevel(level);

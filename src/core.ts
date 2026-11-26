@@ -2,6 +2,7 @@
 // that moves bytes through wasm memory. A call that returns a non-zero code throws, so a misuse
 // of the interface never goes unnoticed.
 
+import type { Engine } from "./engine-api";
 import { MAX_JOURNAL_LEN } from "./journal";
 import { EDIT_FIELDS, editedLevel, editFields, FIELD_CELLS, type Level, LEVEL_LEN, MINION_SLOTS } from "./level";
 
@@ -116,7 +117,7 @@ export class CoreError extends Error {
   }
 }
 
-export class Core {
+export class Core implements Engine {
   private constructor(private readonly wasm: Exports) {}
 
   static async load(source: BufferSource): Promise<Core> {
@@ -340,8 +341,3 @@ export function hex(bytes: Uint8Array): string {
   return "0x" + Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
-export function fromHex(text: string): Uint8Array {
-  const digits = text.replace(/^0x/, "");
-  if (digits.length % 2 !== 0 || /[^0-9a-f]/i.test(digits)) throw new Error(`not hex: ${text}`);
-  return Uint8Array.from({ length: digits.length / 2 }, (_, i) => parseInt(digits.slice(2 * i, 2 * i + 2), 16));
-}

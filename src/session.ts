@@ -2,16 +2,16 @@
 // input path (README §6.2): every due tick samples the controls once and goes through the
 // core's Recorder.
 
-import { Core, CoreError, type EndReason } from "./core";
+import { CoreError, type EndReason } from "./core";
+import type { Engine } from "./engine-api";
 import type { InputSource } from "./input";
 import { createLoop, type Loop } from "./loop";
 
 /** The journal modes (README §6.3): Training (§8.1) plays at levelIndex 0. */
 export const TRAINING = 0;
-export const CHALLENGE = 1;
 
 export function startSession(
-  core: Core,
+  core: Engine,
   level: Uint8Array,
   runNonce: Uint8Array,
   input: InputSource,

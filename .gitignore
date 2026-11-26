@@ -2,3 +2,4 @@ node_modules
 target
 dist
 src/generated.ts
+pack

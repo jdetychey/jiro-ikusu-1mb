@@ -16,6 +16,8 @@ module embedded in the page ([`CORE_SOURCE.md`](CORE_SOURCE.md)). [`PLAN.md`](PL
 npm install --legacy-peer-deps
 npm test
 npm run build   # dist/, and fails above 1,048,576 bytes
+npm run pack    # pack/: index.html with everything inlined, and two zips for the upload form
+npm run e2e     # plays the build in a browser under strict content policies
 ```
 
 Needs Rust (see `rust-toolchain.toml`) and Node 22. MIT licensed; the pixel font has its own

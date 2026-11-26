@@ -1,7 +1,7 @@
 // Controls and their key bindings (README §2, §6.1, D8). Input produces controls, never keys,
 // so the journal does not depend on the bindings.
 
-import { load, save, type Storage } from "./storage";
+import { load, type Storage } from "./storage";
 
 export const CONTROLS = ["up", "down", "left", "right", "a", "b", "x"] as const;
 export type Control = (typeof CONTROLS)[number];
@@ -18,11 +18,6 @@ export const CONTROL_BITS: Record<Control, number> = {
   x: 1 << 6,
 };
 
-/** The controls a mask holds, in the order of CONTROLS. */
-export function controlsOf(mask: number): Control[] {
-  return CONTROLS.filter((control) => (mask & CONTROL_BITS[control]) !== 0);
-}
-
 /** KeyboardEvent.code of each control on a QWERTY keyboard: the arrows, and the keys A, B and X.
  *  A code names a key by its place on a QWERTY keyboard, whatever the layout prints on it. */
 export const DEFAULT_BINDINGS: Bindings = {
@@ -36,7 +31,6 @@ export const DEFAULT_BINDINGS: Bindings = {
 };
 
 const STORAGE_KEY = "jiro-ikusu.bindings";
-const ARROWS: Record<string, string> = { ArrowUp: "↑", ArrowDown: "↓", ArrowLeft: "←", ArrowRight: "→" };
 
 /** What the player's keyboard layout prints on each key, by KeyboardEvent.code. */
 export type KeyboardLayout = ReadonlyMap<string, string>;
@@ -64,34 +58,9 @@ export function defaultBindings(layout: KeyboardLayout | undefined): Bindings {
   return isBindings(bindings) ? bindings : { ...DEFAULT_BINDINGS };
 }
 
-/** A key as the controls panel names it: what `layout` prints on it; with no layout, the letter
- *  or digit at its place on a QWERTY keyboard, marked as such; otherwise its code. */
-export function keyLabel(code: string, layout: KeyboardLayout | undefined): string {
-  const arrow = ARROWS[code];
-  if (arrow !== undefined) return arrow;
-  const printed = layout?.get(code);
-  if (printed !== undefined && printed.trim() !== "") return printed.toUpperCase();
-  const qwerty = /^(?:Key|Digit)(.)$/.exec(code)?.[1];
-  return qwerty === undefined ? code : `${qwerty} (QWERTY)`;
-}
-
 /** The stored bindings, or `defaults` when storage is missing, unreadable or invalid. */
 export function loadBindings(storage: Storage | undefined, defaults: Bindings = DEFAULT_BINDINGS): Bindings {
   return load(storage, STORAGE_KEY, isBindings, () => ({ ...defaults }));
-}
-
-/** Stores the bindings; returns false when storage is missing or refuses, which leaves the
- *  game playable with the bindings of this page. */
-export function saveBindings(storage: Storage | undefined, bindings: Bindings): boolean {
-  return save(storage, STORAGE_KEY, bindings);
-}
-
-/** Binds `control` to `code`, or refuses, with a message that names the key `name`, a key
- *  already bound to another control. */
-export function rebind(bindings: Bindings, control: Control, code: string, name = code): Bindings | string {
-  const holder = CONTROLS.find((other) => other !== control && bindings[other] === code);
-  if (holder !== undefined) return `${name} is already bound to ${holder}`;
-  return { ...bindings, [control]: code };
 }
 
 function isBindings(value: unknown): value is Bindings {
