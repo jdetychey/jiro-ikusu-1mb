@@ -57,13 +57,18 @@ Two modes: **Training** (16 curated levels) and the **daily Run**.
    `.github/workflows/ci.yml` typechecks, tests, builds with the size gate and plays the build in
    Chromium and WebKit (`npm run e2e`), under a strict policy, a policy that allows only itself and a
    sandboxed frame.
-8. **TypeScript core fallback:** see `src/tscore/` once merged.
+8. **Done, TypeScript core fallback:** `src/tscore/` is a pure-TypeScript port of the Rust core
+   (no BigInt; keccak on 32-bit halves), about 21 KB minified and about 2.7× slower than wasm per
+   tick, which is far inside the 15 Hz budget. `bootEngine` falls back to it when WebAssembly is
+   missing or refused, and `?engine=ts` forces it. `test/parity.test.ts` holds it to the wasm build
+   tick by tick (state hash, snapshot, grid, journal, replay traces, and the error codes of 1,500
+   mutated levels and 150 mutated journals), and the e2e tests verify a wasm Run code on the port.
 9. **Open:** a Dec 1 test upload to learn the host's real policy (try `pack/index.html`, then
    `jiro-ikusu-1mb.zip`, then `jiro-ikusu-1mb-files.zip`), ghost replays, music, an attract mode.
 
 ## Risks
 
-- The host's policy is unknown: inline scripts, `wasm-unsafe-eval`, and `crossorigin` module
-  scripts in an opaque origin may each be refused. `pack` makes three forms for that reason.
+- The host's policy is unknown: inline scripts and `crossorigin` module scripts in an opaque origin
+  may be refused (`pack` makes three forms for that), and wasm may be refused (the port covers it).
 - Generated levels can be much easier or harder than their depth suggests: the bots measure it.
 - The core is a copy: it must stay byte-identical to the main repo's (`CORE_SOURCE.md`).

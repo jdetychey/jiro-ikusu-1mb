@@ -2,7 +2,7 @@
 // the seed alone, with the knobs of levels/README.md ramped by depth, and checked by the core's
 // own validity rules, so a bad draw is replaced by the next one.
 
-import type { Core } from "./core";
+import type { Engine } from "./engine-api";
 import { FIELD_CELLS, type Level, LEVEL_LEN, numberSpawns, setObstacle } from "./level";
 import { between, hashText, mulberry32, type Random } from "./rng";
 
@@ -172,7 +172,7 @@ export function drawLevel(depth: number, random: Random): Level {
 }
 
 /** The level bytes of level `depth` of `seed`. Throws if no draw within MAX_ATTEMPTS is valid. */
-export function generateLevel(core: Core, seed: string, depth: number): Uint8Array {
+export function generateLevel(core: Engine, seed: string, depth: number): Uint8Array {
   const random = mulberry32(hashText(`${seed}/${depth}`));
   for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt += 1) {
     const level = drawLevel(depth, random);

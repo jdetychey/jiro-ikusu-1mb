@@ -101,10 +101,38 @@ describe.each(NAMES)("the game in %s", (name) => {
     expect(errors).toEqual([]);
   });
 
-  it("says why when the policy forbids WebAssembly", async () => {
+  it("falls back to the TypeScript engine when the policy forbids WebAssembly", async () => {
     const { page } = await open(NO_WASM);
-    await page.waitForSelector("#error:not([hidden])");
-    expect(await page.textContent("#error")).toMatch(/could not start/);
+    await page.waitForFunction(() => document.getElementById("engine")!.textContent !== "–");
+    expect(await page.textContent("#engine")).toBe("ts");
+  });
+
+  it("plays a Run on the TypeScript engine", async () => {
+    const { page, errors } = await open(NO_WASM);
+    await page.waitForFunction(() => document.getElementById("engine")!.textContent === "ts");
+    await page.click("#run");
+    await page.waitForFunction(() => document.body.classList.contains("playing"));
+    const before = await canvasHash(page);
+    await page.keyboard.down("ArrowUp");
+    await page.waitForTimeout(700);
+    await page.keyboard.up("ArrowUp");
+    expect(await canvasHash(page)).not.toBe(before);
+    expect(errors.filter((error) => !/WebAssembly|wasm|Content Security Policy/i.test(error))).toEqual([]);
+  });
+
+  it("verifies on the TypeScript engine a Run code that the wasm engine wrote", async () => {
+    const wasm = await open(STRICT);
+    await wasm.page.click("#run");
+    await wasm.page.waitForFunction(() => document.body.classList.contains("playing"));
+    await wasm.page.keyboard.down("ArrowUp");
+    await wasm.page.waitForTimeout(500);
+    await wasm.page.keyboard.up("ArrowUp");
+    await wasm.page.keyboard.press("KeyX");
+    await wasm.page.waitForSelector("#code:not([hidden])");
+    const code = await wasm.page.inputValue("#code");
+    const port = await open(STRICT, `/index.html?engine=ts#r=${code}`);
+    await port.page.waitForFunction(() => document.getElementById("verify-result")!.textContent !== "");
+    expect([await port.page.textContent("#engine"), await port.page.textContent("#verify-result")]).toEqual(["ts", expect.stringMatching(/^Valid: /)]);
   });
 
   it("ends a Run, then verifies its code", async () => {

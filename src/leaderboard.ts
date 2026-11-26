@@ -1,7 +1,7 @@
 // A leaderboard with no server: players paste Run codes, and each is replayed by the core, so
 // a score is only ever one that was computed here.
 
-import type { Core } from "./core";
+import type { Engine } from "./engine-api";
 import { verifyCode } from "./run";
 import { messageOf } from "./page";
 
@@ -15,7 +15,7 @@ export function codesOf(text: string): string[] {
 }
 
 /** Replays every code. Valid entries come first, best score first, and ties go to the deeper Run. */
-export function rank(core: Core, codes: readonly string[], today: string): Entry[] {
+export function rank(core: Engine, codes: readonly string[], today: string): Entry[] {
   const entries = codes.map((code): Entry => {
     try {
       return { valid: true, ...verifyCode(core, code, today) };

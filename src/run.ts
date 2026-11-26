@@ -3,7 +3,8 @@
 // core computes by replaying each journal; its code carries the seed and the journals, so anyone
 // can verify it offline.
 
-import { type Core, type EndReason, hex } from "./core";
+import { type EndReason, hex } from "./core";
+import type { Engine } from "./engine-api";
 import { describeError } from "./errors";
 import { generateLevel } from "./generator";
 
@@ -35,7 +36,7 @@ export function weightBp(depth: number): number {
 }
 
 /** The run nonce of level `depth`: fixed by the seed, so everyone faces the same boss. */
-export function nonceFor(core: Core, seed: string, depth: number): Uint8Array {
+export function nonceFor(core: Engine, seed: string, depth: number): Uint8Array {
   return core.journalHash(new TextEncoder().encode(`${seed}/${depth}`));
 }
 
@@ -89,7 +90,7 @@ export interface Verified {
 
 /** Replays every journal of `code` on the levels of its seed. Throws on the first journal the
  *  core rejects, that is not of this seed's nonce, or that follows a level that was not cleared. */
-export function verifyCode(core: Core, code: string, today: string): Verified {
+export function verifyCode(core: Engine, code: string, today: string): Verified {
   const { seed, journals } = decodeCode(code);
   if (seed > today) throw new Error(`the day ${seed} has not come yet`);
   let score = 0;

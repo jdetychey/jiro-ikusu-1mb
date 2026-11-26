@@ -40,7 +40,7 @@ async function main(): Promise<void> {
   const canvas = element<HTMLCanvasElement>("field");
   const storage = browserStorage();
   if (storage === undefined) element("storage-note").hidden = false;
-  const { core, name: engineName } = await bootEngine();
+  const { core, name: engineName } = await bootEngine(location.search);
   element("engine").textContent = engineName satisfies EngineName;
   const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const renderer = new Renderer(canvas);

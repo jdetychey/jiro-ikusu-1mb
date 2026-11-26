@@ -1,21 +1,25 @@
-// Starting the engine. WebAssembly may be missing or refused by the host's content policy, in
-// which case the page says so, instead of showing nothing.
+// Starting the engine: the wasm build, or its TypeScript port when WebAssembly is missing or
+// refused by the host's content policy. `?engine=ts` asks for the port, for testing it.
 
-import type { Core } from "./core";
+import type { Engine } from "./engine-api";
 import { loadEngine } from "./engine";
+import { TsCore } from "./tscore";
 
-export type EngineName = "wasm";
+export type EngineName = "wasm" | "ts";
 
 export interface Booted {
-  core: Core;
+  core: Engine;
   name: EngineName;
 }
 
-export async function bootEngine(): Promise<Booted> {
-  if (typeof WebAssembly !== "object") throw new Error("This browser has no WebAssembly, which the game engine needs.");
-  try {
-    return { core: await loadEngine(), name: "wasm" };
-  } catch (cause) {
-    throw new Error(`The game engine could not start: ${cause instanceof Error ? cause.message : String(cause)}. A browser or host setting may be blocking WebAssembly.`, { cause });
+export async function bootEngine(search: string): Promise<Booted> {
+  const wantsPort = new URLSearchParams(search).get("engine") === "ts";
+  if (!wantsPort && typeof WebAssembly === "object") {
+    try {
+      return { core: await loadEngine(), name: "wasm" };
+    } catch (error) {
+      console.warn("WebAssembly could not start, so the game runs on its TypeScript engine", error);
+    }
   }
+  return { core: await TsCore.load(), name: "ts" };
 }
