@@ -9,13 +9,17 @@ export function element<T extends HTMLElement>(id: string): T {
   return found as T;
 }
 
-/** Sizes the field to the largest integer scale that fits the window, less the page's padding
- *  and header. */
-export function fitField(renderer: Renderer): void {
-  renderer.fit(Math.min(window.innerWidth - 32, 960), window.innerHeight - 160);
+/** Sizes the field to the screen less the page's padding and, above the field, whatever the
+ *  layout puts there: the cell size is the largest whole number of pixels that fits. Returns
+ *  whether the size changed. */
+export function fitField(renderer: Renderer): boolean {
+  const compact = window.innerWidth < 512;
+  const chrome = compact ? 220 : 120;
+  return renderer.fit(Math.min(window.innerWidth - (compact ? 16 : 32), 960), window.innerHeight - chrome);
 }
 
-export function showHud({ claimBp, targetBp, lives, shield, ticksLeft }: Snapshot): void {
+export function showHud({ claimBp, targetBp, lives, shield, ticksLeft }: Snapshot, score: number | undefined): void {
+  element("hud-score").textContent = score === undefined ? "–" : String(score);
   element("hud-claim").textContent = `${percent(claimBp)} of ${percent(targetBp)}`;
   element("hud-lives").textContent = String(lives);
   element("hud-shield").textContent = String(shield);

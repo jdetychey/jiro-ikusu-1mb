@@ -1,0 +1,33 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Rust toolchain from rust-toolchain.toml
+        run: rustup show active-toolchain || rustup toolchain install
+      - run: npm ci --no-audit --no-fund --legacy-peer-deps
+      - run: npm run typecheck
+      - run: npm test
+      - name: Build, and check the 1 MiB limit
+        run: npm run build
+      - name: Install browsers
+        run: npx playwright install --with-deps chromium webkit
+      - name: Play the built game in Chromium and WebKit
+        run: npm run e2e
+        env:
+          E2E_BROWSERS: chromium,webkit
+      - uses: actions/upload-artifact@v4
+        with:
+          name: contest-upload
+          path: pack/

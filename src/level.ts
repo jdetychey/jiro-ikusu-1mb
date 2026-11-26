@@ -5,8 +5,6 @@
 export const LEVEL_LEN = 472;
 export const FIELD_CELLS = 60;
 export const MINION_SLOTS = 3;
-/** The player's start cell (README §4.3). */
-export const PLAYER_START = { x: 30, y: 59 } as const;
 
 export interface Cell {
   x: number;
@@ -72,16 +70,8 @@ export function editedLevel(cells: Uint8Array, fields: number[]): Level {
 
 const index = ({ x, y }: Cell) => y * FIELD_CELLS + x;
 
-export function isObstacle(level: Level, cell: Cell): boolean {
-  return level.cells[index(cell)] === 1;
-}
-
 export function setObstacle(level: Level, cell: Cell, obstacle: boolean): void {
   level.cells[index(cell)] = obstacle ? 1 : 0;
-}
-
-export function isBorder({ x, y }: Cell): boolean {
-  return x === 0 || y === 0 || x === FIELD_CELLS - 1 || y === FIELD_CELLS - 1;
 }
 
 /** The spawn slot of `cell` among the first `minionCount`, or -1. */
@@ -98,16 +88,3 @@ export function numberSpawns(level: Level): Cell | undefined {
   return spawns.find((spawn, i) => i > 0 && index(spawn) === index(spawns[i - 1] ?? spawn));
 }
 
-/** Removes the minion spawn at `cell`, or adds one there if a slot is free, numbering the
- *  spawns as `numberSpawns` does. Returns false when all slots are taken. */
-export function toggleMinion(level: Level, cell: Cell): boolean {
-  const slot = minionAt(level, cell);
-  const spawns = level.minionSpawns.slice(0, level.minionCount);
-  if (slot >= 0) spawns.splice(slot, 1);
-  else if (spawns.length < MINION_SLOTS) spawns.push({ ...cell });
-  else return false;
-  level.minionSpawns = spawns;
-  level.minionCount = spawns.length;
-  numberSpawns(level);
-  return true;
-}

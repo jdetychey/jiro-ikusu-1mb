@@ -9,6 +9,9 @@ export function ticksDue(t0: number, t: number): number {
   return Math.floor(((t - t0) * TICK_HZ) / 1000) + 1;
 }
 
+/** The most ticks one `pump` runs. A late frame catches up over several, and no tick is skipped. */
+export const MAX_TICKS_PER_PUMP = 4;
+
 export interface LoopHooks<End> {
   /** The current time in milliseconds, as performance.now() reports it. */
   now(): number;
@@ -19,7 +22,7 @@ export interface LoopHooks<End> {
 }
 
 export interface Loop<End> {
-  /** Runs every tick that is due by now; returns the end once the level has ended. */
+  /** Runs the ticks that are due by now, at most MAX_TICKS_PER_PUMP; returns the end once the level has ended. */
   pump(): End | undefined;
   readonly ticksRun: number;
   /** The clock's reading when the loop was created, when tick 0 is due. */
@@ -32,7 +35,7 @@ export function createLoop<End>(hooks: LoopHooks<End>): Loop<End> {
   let end: End | undefined;
   return {
     pump() {
-      const due = ticksDue(t0, hooks.now());
+      const due = Math.min(ticksDue(t0, hooks.now()), ticksRun + MAX_TICKS_PER_PUMP);
       while (end === undefined && ticksRun < due) {
         end = hooks.tick(hooks.sample());
         ticksRun += 1;

@@ -8,10 +8,13 @@
     "dev": "npm run wasm && npm run embed && vite",
     "build": "npm run wasm && npm run embed && vite build && node scripts/check-size.mjs",
     "typecheck": "tsc --noEmit",
-    "test": "npm run wasm && npm run embed && vitest run"
+    "test": "npm run wasm && npm run embed && vitest run",
+    "e2e": "npm run pack && vitest run --config vitest.e2e.config.ts",
+    "pack": "npm run build && node scripts/pack.mjs"
   },
   "devDependencies": {
     "@types/node": "22.20.5",
+    "playwright": "^1.63.0",
     "typescript": "6.0.3",
     "vite": "8.3.5",
     "vitest": "5.0.5"

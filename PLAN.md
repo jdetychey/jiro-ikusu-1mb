@@ -33,24 +33,37 @@ Two modes: **Training** (16 curated levels) and the **daily Run**.
 
 ## Milestones
 
-1. **Done:** repo, wasm core, build, size gate (about 100 KB of 1 MB), generator, Run, codes,
-   smoke test under a strict CSP.
-2. **Wasm in the host's sandbox:** upload a test page on Dec 1. If it blocks wasm
-   (no `wasm-unsafe-eval`), port `core/` to TypeScript, checked against the main repo's vectors.
-3. **Done, balance:** `scripts/balance.sh` runs the main repository's playtest bots (the reference
-   mix, bold and committer) on generated levels and writes `reports/balance.md`. The ramp is smooth:
-   98 % at level 1, 54 % at 17, 17 % at 33, about 8 % from 45, and it keeps rising through time,
-   walls and target. Bots are weaker than people, so this is a floor on what humans clear.
-4. **Done, product:** brand assets from the main repository (wordmark, banner, icons), visual
-   replay of a Run code (`src/replay.ts`: the journal's events fed to the core tick by tick, 1×,
-   2× or 4×), sound synthesized with WebAudio (`src/sound.ts`: cues from snapshot changes, a mute
-   box). Still open: a title screen, and a bigger field on phones (the integer scale gives 1× on
-   a 390 px screen).
-5. **QA and submit:** Playwright on Chromium and WebKit, parity vectors, then submit with this
-   repo as the link.
+1. **Done:** repo, wasm core, build, size gate, generator, Run, codes.
+2. **Done, balance:** `scripts/balance.sh` plays the main repository's reference bots (bold and
+   committer) on generated levels and writes `reports/balance.md`. The clear rate falls smoothly
+   from 98 % at level 1 to about 8-15 % by level 45, with a rest level every fifth level (easier)
+   and a boss level every tenth (a size-8 boss). Bots are weaker than people.
+3. **Done, shell:** pause when the page is hidden or loses focus (and P or Escape), a tick cap per
+   frame, one animation-frame chain, keys prevented only while playing and only the bound ones,
+   audio unlocked on the first gesture, the daily seed read when a Run starts, a readable error
+   page if the engine cannot start.
+4. **Done, first minute:** title screen, level intro cards, a first-run tutorial on training
+   level 1, score and depth in the HUD, juice (sparks, a floating gain, shake, flash), a blinking
+   player while invulnerable, a boss with a core and minions with a center, so shapes tell them
+   apart without colour.
+5. **Done, phones:** the cell size is the largest whole number of pixels that fits (6 px on a
+   390 px phone, a 360 px field), no banner, a sticky touch bar clear of the home bar, no scroll or
+   pull-to-refresh while playing, a landscape layout.
+6. **Done, sharing:** Copy code, Copy link (`#r=<code>` verifies on open), a Wordle-style result
+   line, streak and best depth, a leaderboard from pasted codes, watch at 1×, 2× or 4×.
+   `verifyCode` rejects a bad seed, a future day and bad base64.
+7. **Done, packaging and CI:** `npm run pack` writes `pack/index.html` (everything inlined: no
+   file is fetched, so even an opaque-origin sandbox cannot refuse one) and two deterministic zips;
+   `.github/workflows/ci.yml` typechecks, tests, builds with the size gate and plays the build in
+   Chromium and WebKit (`npm run e2e`), under a strict policy, a policy that allows only itself and a
+   sandboxed frame.
+8. **TypeScript core fallback:** see `src/tscore/` once merged.
+9. **Open:** a Dec 1 test upload to learn the host's real policy (try `pack/index.html`, then
+   `jiro-ikusu-1mb.zip`, then `jiro-ikusu-1mb-files.zip`), ghost replays, music, an attract mode.
 
 ## Risks
 
-- Wasm blocked by the host's CSP (milestone 2).
-- Generated levels can be much easier or harder than their depth suggests (milestone 3).
+- The host's policy is unknown: inline scripts, `wasm-unsafe-eval`, and `crossorigin` module
+  scripts in an opaque origin may each be refused. `pack` makes three forms for that reason.
+- Generated levels can be much easier or harder than their depth suggests: the bots measure it.
 - The core is a copy: it must stay byte-identical to the main repo's (`CORE_SOURCE.md`).

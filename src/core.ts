@@ -340,8 +340,3 @@ export function hex(bytes: Uint8Array): string {
   return "0x" + Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
-export function fromHex(text: string): Uint8Array {
-  const digits = text.replace(/^0x/, "");
-  if (digits.length % 2 !== 0 || /[^0-9a-f]/i.test(digits)) throw new Error(`not hex: ${text}`);
-  return Uint8Array.from({ length: digits.length / 2 }, (_, i) => parseInt(digits.slice(2 * i, 2 * i + 2), 16));
-}

@@ -31,16 +31,39 @@ const NOTES: Record<Cue, [number, number][]> = {
 
 export class Sound {
   private context: AudioContext | undefined;
+  private broken = false;
   muted: boolean;
 
   constructor(muted: boolean) {
     this.muted = muted;
   }
 
+  /** Starts the audio on a player's gesture, as browsers (iOS above all) only allow then. */
+  unlock(): void {
+    if (this.broken) return;
+    try {
+      this.context ??= new AudioContext();
+      void this.context.resume();
+    } catch (error) {
+      this.fail(error);
+    }
+  }
+
+  private fail(error: unknown): void {
+    this.broken = true;
+    console.warn("sound is off: the audio could not start", error);
+  }
+
   play(cue: Cue): void {
-    if (this.muted) return;
-    this.context ??= new AudioContext();
-    const context = this.context;
+    if (this.muted || this.broken || this.context === undefined) return;
+    try {
+      this.schedule(cue, this.context);
+    } catch (error) {
+      this.fail(error);
+    }
+  }
+
+  private schedule(cue: Cue, context: AudioContext): void {
     let at = context.currentTime;
     for (const [frequency, seconds] of NOTES[cue]) {
       const oscillator = context.createOscillator();
