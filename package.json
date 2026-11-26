@@ -1,0 +1,19 @@
+{
+  "name": "jiro-ikusu-1mb",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "wasm": "cargo build -p jiro-wasm --release --locked --target wasm32-unknown-unknown",
+    "embed": "node scripts/embed.mjs",
+    "dev": "npm run wasm && npm run embed && vite",
+    "build": "npm run wasm && npm run embed && vite build && node scripts/check-size.mjs",
+    "typecheck": "tsc --noEmit",
+    "test": "npm run wasm && npm run embed && vitest run"
+  },
+  "devDependencies": {
+    "@types/node": "22.20.5",
+    "typescript": "6.0.3",
+    "vite": "8.3.5",
+    "vitest": "5.0.5"
+  }
+}
