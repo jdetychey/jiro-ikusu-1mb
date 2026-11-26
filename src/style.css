@@ -338,5 +338,4 @@ canvas { display: block; background: var(--field); image-rendering: pixelated; s
   button:active, a.button:active, .pad.pressed > div { transform: none; }
 }
 
-.title { margin: 0; font: 28px/36px var(--font-pixel); letter-spacing: 0; }
 textarea { width: 100%; box-sizing: border-box; font: 12px/16px var(--font-code); }
