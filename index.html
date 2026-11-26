@@ -21,6 +21,7 @@
           <textarea id="code" readonly rows="3" hidden aria-label="Run code"></textarea>
           <div class="actions">
             <button id="next" type="button" hidden>Next level</button>
+            <button id="watch-run" type="button" hidden>Watch this Run</button>
             <button id="again" type="button">Play again</button>
           </div>
         </div>
@@ -53,11 +54,14 @@
           <summary>Verify a Run code</summary>
           <textarea id="verify-code" rows="3" aria-label="Run code to verify"></textarea>
           <button id="verify" type="button">Verify</button>
+          <button id="watch" type="button" hidden>Watch</button>
+          <label>Speed <select id="speed"><option value="1">1×</option><option value="2">2×</option><option value="4">4×</option></select></label>
           <p id="verify-result" role="status"></p>
         </details>
         <details class="controls">
           <summary>Controls</summary>
           <p class="keys-help">Move with the arrow keys. Hold A to cut fast, B to slow down behind the shield, X to bank the level.</p>
+          <label><input id="mute" type="checkbox" /> Mute sound</label>
           <div class="touch-help">
             <fieldset>
               <legend>Touch controls</legend>
